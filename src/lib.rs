@@ -11,13 +11,14 @@ use std::collections::HashMap;
 pub mod db;
 
 // public functions 
-pub fn create_reg(date: &str, user: &str) -> Result<usize, &'static str> {
-    let conn = establish_connection();
+pub fn create_reg(date: &str, user: &str) -> Result<String, String> {
     let uppercase_user = user.to_uppercase();
-
-    match get_valid_dates().iter().position(|s| s.date == date) {
-        Some(_) => Ok(insert_reg(&conn, date, uppercase_user.as_str())), 
-        None => Err("Date is not valid"),
+    let dates_count = get_dates_count();
+    
+    match dates_count.get(date) {
+        None => Err("There is no such date for registration available".to_string()),
+        Some(x) if x >= &6 => Err("Date is full!".to_string()),
+        Some(_) => insert_reg(date, uppercase_user.as_str()),
     }
 }
 
@@ -33,22 +34,16 @@ pub fn get_all_regs() -> Vec<db::models::Reg> {
     result
 }
 
-pub fn get_valid_dates() -> Vec<db::models::Date> {
-    let all_dates = get_all_dates();
+pub fn get_dates_count() -> HashMap<String, i32> {
     let all_regs = get_all_regs();
 
-    if all_regs.len() < 6 {
-        return all_dates;
-    }
-    
     let mut regs_count = HashMap::new();
     
     for reg in all_regs {
         *regs_count.entry(reg.date.clone()).or_insert(0) += 1; 
     }
-    
-    all_dates.into_iter()
-        .filter(|date| regs_count[&date.date] < 6).collect()
+
+    regs_count
 }
 
 pub fn get_all_dates() -> Vec<db::models::Date> {
@@ -86,18 +81,21 @@ fn establish_connection() -> SqliteConnection {
         .expect(&format!("Error connecting to {}", database_url))
 }
 
-fn insert_reg<'a>(conn: &SqliteConnection, date: &'a str, user: &'a str) -> usize {
+fn insert_reg<'a>(date: &'a str, user: &'a str) -> Result<String, String> {
     use db::schema::regs;
+    let conn = establish_connection();
 
     let new_reg = db::models::NewReg {
         date: date,
         user: user,
     };
 
-    diesel::insert_into(regs::table)
+    let result = diesel::insert_into(regs::table)
         .values(&new_reg)
-        .execute(conn)
-        .expect("Error saving new reg")
+        .execute(&conn);
+
+    match result {
+        Ok(_) => Ok("Success!".to_string()), 
+        Err(e) => Err(e.to_string()),
+    }
 }
-
-
