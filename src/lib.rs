@@ -13,10 +13,10 @@ pub mod db;
 // public functions 
 pub fn create_reg(date: &str, user: &str) -> Result<usize, &'static str> {
     let conn = establish_connection();
-    let uppercase_user = user.to_uppercase().as_str();
+    let uppercase_user = user.to_uppercase();
 
     match get_valid_dates().iter().position(|s| s.date == date) {
-        Some(_) => Ok(insert_reg(&conn, date, uppercase_user)), 
+        Some(_) => Ok(insert_reg(&conn, date, uppercase_user.as_str())), 
         None => Err("Date is not valid"),
     }
 }
