@@ -10,11 +10,18 @@ use std::collections::HashMap;
 
 pub mod db;
 
-// public functions 
+// public functions
+
+// create a registration on a desired date.
+// if there is no such date available or this date has
+// 6 or more registrations yet, it will return error
 pub fn create_reg(date: &str, user: &str) -> Result<String, String> {
     let uppercase_user = user.to_uppercase();
     let dates_count = get_dates_count();
-    
+
+    // here we should return String instead of str
+    // because we want to return diesel error instead of our custom.
+    // it implements a Display trait with simple cast to a String type
     match dates_count.get(date) {
         None => Err("There is no such date for registration available".to_string()),
         Some(x) if x >= &6 => Err("Date is full!".to_string()),
@@ -22,11 +29,14 @@ pub fn create_reg(date: &str, user: &str) -> Result<String, String> {
     }
 }
 
+// returns array of all registrations inserted.
+// it is nedeed only for debug purposes
 pub fn get_all_regs() -> Vec<db::models::Reg> {
     use db::schema::regs::dsl::*;
 
     let connection = establish_connection();
-    let result = regs.load::<db::models::Reg>(&connection)
+    let result = regs
+        .load::<db::models::Reg>(&connection)
         .expect("Error loading regs");
 
     println!("Loaded {} regs", result.len());
@@ -34,23 +44,14 @@ pub fn get_all_regs() -> Vec<db::models::Reg> {
     result
 }
 
-pub fn get_dates_count() -> HashMap<String, i32> {
-    let all_regs = get_all_regs();
-
-    let mut regs_count = HashMap::new();
-    
-    for reg in all_regs {
-        *regs_count.entry(reg.date.clone()).or_insert(0) += 1; 
-    }
-
-    regs_count
-}
-
+// returns all dates available for registration
+// TODO add filteration for dates with 6 and more registrations
 pub fn get_all_dates() -> Vec<db::models::Date> {
     use db::schema::dates::dsl::*;
 
     let connection = establish_connection();
-    let result = dates.load::<db::models::Date>(&connection)
+    let result = dates
+        .load::<db::models::Date>(&connection)
         .expect("Error loading dates");
 
     println!("Loaded {} dates", result.len());
@@ -58,11 +59,13 @@ pub fn get_all_dates() -> Vec<db::models::Date> {
     result
 }
 
+// returns all users for a validation on client side
 pub fn get_all_users() -> Vec<db::models::User> {
     use db::schema::users::dsl::*;
 
     let connection = establish_connection();
-    let result = users.load::<db::models::User>(&connection)
+    let result = users
+        .load::<db::models::User>(&connection)
         .expect("Error loading users");
 
     println!("Loaded {} users", result.len());
@@ -71,16 +74,18 @@ pub fn get_all_users() -> Vec<db::models::User> {
 }
 
 // private functions
+
+// creating connection to db
 fn establish_connection() -> SqliteConnection {
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set in .env file");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file");
 
     SqliteConnection::establish(&database_url)
         .expect(&format!("Error connecting to {}", database_url))
 }
 
+// insert registration to db
 fn insert_reg<'a>(date: &'a str, user: &'a str) -> Result<String, String> {
     use db::schema::regs;
     let conn = establish_connection();
@@ -95,7 +100,21 @@ fn insert_reg<'a>(date: &'a str, user: &'a str) -> Result<String, String> {
         .execute(&conn);
 
     match result {
-        Ok(_) => Ok("Success!".to_string()), 
+        Ok(_) => Ok("Success!".to_string()),
         Err(e) => Err(e.to_string()),
     }
+}
+
+// return hashmap with date as a key and count of occurences as value
+// it is used to filter full dates
+fn get_dates_count() -> HashMap<String, i32> {
+    let all_regs = get_all_regs();
+
+    let mut regs_count = HashMap::new();
+
+    for reg in all_regs {
+        *regs_count.entry(reg.date.clone()).or_insert(0) += 1;
+    }
+
+    regs_count
 }
