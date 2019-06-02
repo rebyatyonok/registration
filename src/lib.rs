@@ -44,22 +44,24 @@ pub fn get_all_regs() -> Vec<db::models::Reg> {
     result
 }
 
-// returns all dates available for registration
-// TODO add filteration for dates with 6 and more registrations
-pub fn get_all_dates() -> Vec<db::models::Date> {
+// returns all dates available for filtration on client side
+pub fn get_all_dates() -> Vec<String> {
     use db::schema::dates::dsl::*;
 
     let connection = establish_connection();
-    let result = dates
+    let dates_count = get_dates_count();
+
+    let pre_result = dates
         .load::<db::models::Date>(&connection)
         .expect("Error loading dates");
-
-    println!("Loaded {} dates", result.len());
-
-    result
+    
+    pre_result.into_iter()
+        .filter(|s| dates_count.get(&s.date).unwrap() < &6)
+        .map(|s| s.date)
+        .collect::<Vec<String>>()
 }
 
-// returns all users for a validation on client side
+// returns all users for a validation on a client side
 pub fn get_all_users() -> Vec<db::models::User> {
     use db::schema::users::dsl::*;
 
