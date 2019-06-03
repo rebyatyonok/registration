@@ -51,10 +51,12 @@ pub fn get_all_dates() -> Vec<String> {
     let connection = establish_connection();
     let dates_count = get_dates_count();
 
+    // get all dates to filter
     let pre_result = dates
         .load::<db::models::Date>(&connection)
         .expect("Error loading dates");
     
+    // filter valid dates
     pre_result.into_iter()
         .filter(|s| dates_count.get(&s.date).unwrap() < &6)
         .map(|s| s.date)
@@ -101,6 +103,8 @@ fn insert_reg<'a>(date: &'a str, user: &'a str) -> Result<String, String> {
         .values(&new_reg)
         .execute(&conn);
 
+    // return String types in Result, because we need 
+    // the same types in parent function 
     match result {
         Ok(_) => Ok("Success!".to_string()),
         Err(e) => Err(e.to_string()),
@@ -120,3 +124,34 @@ fn get_dates_count() -> HashMap<String, i32> {
 
     regs_count
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_all_users() {
+        let result = get_all_users();
+
+        assert_eq!(6, result.len());
+    }
+
+    // test wrong date insertion
+    // test all dates method (it should not be changed)
+    // test insertion of one right date
+    // test all dates method (it should not be changed)
+    // test insertion a lot of regs on one date (to make date invalid)
+    // test all dates method (it should be changed)
+    // test insertion on an invalid date
+    // test insertion on another date
+
+    #[test] 
+    fn insert_six_valid_registration() {
+        for _ in 0..6 {
+            let result = create_reg("Tue Oct 01 2019", "Ivan").unwrap();
+
+            assert_eq!(result, "Success!".to_string());
+        }
+    }
+}
+
