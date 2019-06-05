@@ -194,10 +194,5 @@ mod tests{
             Err(_) => assert!(false),
         }
     }
-
-    #[test]
-    fn test_all_regs_after_insert() {
-        assert_eq!(1, get_all_regs().len());
-    }
 }
 
