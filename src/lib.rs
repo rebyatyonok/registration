@@ -18,6 +18,13 @@ pub mod db;
 pub fn create_reg(date: &str, user: &str) -> Result<String, String> {
     let uppercase_user = user.to_uppercase();
     let dates_count = get_dates_count();
+    let user_index = get_all_users().into_iter()
+        .position(|s| s.name == user.to_uppercase());
+
+    // check is username valid
+    if let None = user_index {
+        return Err("Username is not valid".to_string())
+    };
 
     // here we should return String instead of str
     // because we want to return diesel error instead of our custom.
@@ -29,8 +36,20 @@ pub fn create_reg(date: &str, user: &str) -> Result<String, String> {
     }
 }
 
+pub fn get_valid_dates() -> Vec<String> {
+    let dates_count = get_dates_count();
+    let mut result = Vec::new();
+
+    for (date, count) in dates_count {
+        if count < 6 {
+            result.push(date);
+        }
+    }
+
+    result
+}
+
 // returns array of all registrations inserted.
-// it is nedeed only for debug purposes
 pub fn get_all_regs() -> Vec<db::models::Reg> {
     use db::schema::regs::dsl::*;
 
@@ -42,25 +61,6 @@ pub fn get_all_regs() -> Vec<db::models::Reg> {
     println!("Loaded {} regs", result.len());
 
     result
-}
-
-// returns all dates available for filtration on client side
-pub fn get_all_dates() -> Vec<String> {
-    use db::schema::dates::dsl::*;
-
-    let connection = establish_connection();
-    let dates_count = get_dates_count();
-
-    // get all dates to filter
-    let pre_result = dates
-        .load::<db::models::Date>(&connection)
-        .expect("Error loading dates");
-    
-    // filter valid dates
-    pre_result.into_iter()
-        .filter(|s| dates_count.get(&s.date).unwrap() < &6)
-        .map(|s| s.date)
-        .collect::<Vec<String>>()
 }
 
 // returns all users for a validation on a client side
@@ -112,46 +112,92 @@ fn insert_reg<'a>(date: &'a str, user: &'a str) -> Result<String, String> {
 }
 
 // return hashmap with date as a key and count of occurences as value
-// it is used to filter full dates
+// it is used to filter out full dates
 fn get_dates_count() -> HashMap<String, i32> {
     let all_regs = get_all_regs();
+    let all_dates = get_all_dates();
 
     let mut regs_count = HashMap::new();
 
+    for date in all_dates {
+        regs_count.insert(date, 0);
+    }
+
     for reg in all_regs {
-        *regs_count.entry(reg.date.clone()).or_insert(0) += 1;
+        *regs_count.get_mut(&reg.date).unwrap() += 1;
     }
 
     regs_count
 }
 
+// returns all dates 
+fn get_all_dates() -> Vec<String> {
+    use db::schema::dates::dsl::*;
+
+    let connection = establish_connection();
+
+    // get all dates to filter
+    let pre_result = dates
+        .load::<db::models::Date>(&connection)
+        .expect("Error loading dates");
+    
+    // filter valid dates
+    pre_result.into_iter()
+        .map(|s| s.date)
+        .collect::<Vec<String>>()
+}
+
 #[cfg(test)]
-mod tests {
+mod tests{
     use super::*;
 
     #[test]
     fn test_get_all_users() {
-        let result = get_all_users();
-
-        assert_eq!(6, result.len());
+        assert_eq!(3, get_all_users().len());
     }
 
-    // test wrong date insertion
-    // test all dates method (it should not be changed)
-    // test insertion of one right date
-    // test all dates method (it should not be changed)
-    // test insertion a lot of regs on one date (to make date invalid)
-    // test all dates method (it should be changed)
-    // test insertion on an invalid date
-    // test insertion on another date
+    #[test]
+    fn test_get_all_dates() {
+        assert_eq!(3, get_all_dates().len());
+    }
 
-    #[test] 
-    fn insert_six_valid_registration() {
-        for _ in 0..6 {
-            let result = create_reg("Tue Oct 01 2019", "Ivan").unwrap();
+    #[test]
+    fn test_get_all_regs() {
+        assert_eq!(0, get_all_regs().len());
+    }
 
-            assert_eq!(result, "Success!".to_string());
+    #[test]
+    fn test_get_valid_dates() {
+        assert_eq!(3, get_valid_dates().len());
+    }
+
+    #[test]
+    fn test_wrong_date_reg() {
+        match create_reg("Tue Oct 01 9999", "Ivan") {
+            Ok(_) => assert!(false),
+            Err(_) => assert!(true),
         }
+    }
+
+    #[test]
+    fn test_wrong_user_reg() {
+        match create_reg("Tue Oct 01 2019", "sdfkjsdfh") {
+            Ok(_) => assert!(false),
+            Err(_) => assert!(true),
+        }
+    }
+
+    #[test]
+    fn test_right_reg() {
+        match create_reg("Tue Oct 01 2019", "Ivan") {
+            Ok(_) => assert!(true),
+            Err(_) => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_all_regs_after_insert() {
+        assert_eq!(1, get_all_regs().len());
     }
 }
 
