@@ -1,5 +1,5 @@
 # Registration-lib
-This project a little bit messy now. I plan to split it in a two separate: a library and a server implementation. Maybe later add a front-end using any interesting framework.
+This project a little bit messy now. I plan to split it in a two separate: a library and a server implementation. Maybe later will add a front-end based on any interesting framework.
 
 This is a simple rust library based on one of my working projects. That lib should be able to allow users to register for some classes on a particular date. If there is more than 6 users on a  date - it should be closed for the registration. 
 
