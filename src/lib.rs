@@ -36,6 +36,8 @@ pub fn create_reg(date: &str, user: &str) -> Result<String, String> {
     }
 }
 
+// this function returns vec of dates with less 
+// than six registrations
 pub fn get_valid_dates() -> Vec<String> {
     let dates_count = get_dates_count();
     let mut result = Vec::new();
@@ -187,11 +189,23 @@ mod tests{
         }
     }
 
+    // this is test write 6 registrations to db and
+    // check if this date is invalid now
     #[test]
-    fn test_right_reg() {
+    fn test_6_right_regs() {
+        for _ in 0..6 {
+            match create_reg("Tue Oct 01 2019", "Ivan") {
+                Err(_) => assert!(false),
+                Ok(_) => assert!(true),
+            }
+        }
+        
+        assert_eq!(6, get_all_regs().len());
+        assert_eq!(2, get_valid_dates().len());
+
         match create_reg("Tue Oct 01 2019", "Ivan") {
-            Ok(_) => assert!(true),
-            Err(_) => assert!(false),
+            Err(_) => assert!(true),
+            Ok(_) => assert!(false),
         }
     }
 }
